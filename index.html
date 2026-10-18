@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <h1>Gps Tracker</h1>
+    <button id="startBtn" onclick="startTracking()">start</button>
+
+    <button id="stopBtn" onclick="stopTracking()">stop</button>
+
+    <button id="downloadBtn" onclick="downloadCSV()">download</button>
+
+    <div id="status">
+        
+    </div>
+    <script>
+        let watchId = null;
+        const readings = [];
+        let deviceId = localStorage.getItem("deviceId");
+        if (!deviceId){
+            deviceId = crypto.randomUUID();
+            localStorage.setItem("deviceId", deviceId);
+        }
+        const options = {
+            enableHighAccuracy: true,
+            maximumAge: 0
+        };
+
+        function onSuccess(position) {
+            const positionData = {
+                deviceId:   deviceId,
+                timestamp:  position.timestamp,
+                latitude:   position.coords.latitude,
+                longitude:  position.coords.longitude,
+                accuracy:   position.coords.accuracy,
+                altitude:   position.coords.altitude,
+                speed:      position.coords.speed,
+                heading:    position.coords.heading,
+            };
+            readings.push(positionData);
+            let status = document.getElementById("status");
+            status.textContent = `Latitude: ${positionData.latitude}
+            Longitude: ${positionData.longitude}
+            Accuracy: ${positionData.accuracy}
+            Readings: ${readings.length}`;
+        }
+
+        function onError(err){
+            const error = {
+                code:    err.code,
+                message: err.message
+            };
+            let status = document.getElementById("status");
+            status.textContent = `Error ${error.code}: ${error.message}`;
+        }
+
+        function startTracking(){
+            document.getElementById("status").textContent = "Start button clicked";
+            if(watchId === null){
+                watchId = navigator.geolocation.watchPosition(onSuccess, onError, options);
+            }
+        }
+
+        function stopTracking(){
+            if(watchId !== null){
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+        }
+
+        function getCsv() {
+            const header = "deviceId,timestamp,latitude,longitude,accuracy,altitude,speed,heading";
+            const rows = readings.map(reading => {
+                const row = `${reading.deviceId},`+
+                `${new Date(reading.timestamp).toISOString()},`+
+                `${reading.latitude},`+
+                `${reading.longitude},`+
+                `${reading.accuracy},`+
+                `${reading.altitude === null ? "" : reading.altitude},`+
+                `${reading.speed    === null ? "" : reading.speed},`+
+                `${reading.heading  === null ? "" : reading.heading}`
+                return row;
+            });
+            return [header, ...rows].join("\n")
+        }
+
+        function downloadCSV(){
+            console.log("Number of readings:", readings.length);
+            const csvString = getCsv();
+            const blob = new Blob([csvString], {type: "text/csv"});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "gps.csv";
+            link.click()
+            URL.revokeObjectURL(url)
+        }
+    
+    </script>
+</body>
+</html>
