@@ -1,0 +1,10 @@
+## Requirements
+Python 3.9+ (tested on 3.14)
+
+## Setup
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+## Run
+python analyse.py gps.csv --out figs
