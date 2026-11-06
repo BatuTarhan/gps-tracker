@@ -6,16 +6,62 @@
 </head>
 <body>
     <h1>Gps Tracker</h1>
-    <button id="startBtn" onclick="startTracking()">start</button>
+    <button id="startBtn">start</button>
 
-    <button id="stopBtn" onclick="stopTracking()">stop</button>
+    <button id="stopBtn">stop</button>
 
-    <button id="downloadBtn" onclick="downloadCSV()">download</button>
+    <button id="downloadBtn">download</button>
 
     <div id="status">
         
     </div>
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+
+        import {
+            getAuth,
+            signInAnonymously,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+        import {
+            initializeFirestore,
+            persistentLocalCache,
+            doc,
+            setDoc,
+            updateDoc,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDyNKcoAFL_9C5aEvVm7PnLN2KW4hnrrNk",
+            authDomain: "gps-tracker-95578.firebaseapp.com",
+            projectId: "gps-tracker-95578",
+            appId: "1:55561269410:web:604bc806c39f1a9bbea7fb",
+            //storageBucket: "gps-tracker-95578.firebasestorage.app",
+            //messagingSenderId: "55561269410",
+            //measurementId: "G-2WMFDDZXF2"
+        };
+        const app = initializeApp(firebaseConfig)
+        const auth = getAuth(app)
+        const db = initializeFirestore(app, {
+            localCache: persistentLocalCache()
+        });
+        let currentUid = null
+        let authReady = false
+
+        signInAnonymously(auth).catch((error) => {
+            console.log("Authentication Failed: ", error)
+        });
+
+        onAuthStateChanged(auth, (user) => {
+            if(user){
+                currentUUID = user.uid;
+                authReady = true;
+                console.log("Authenticated: ", currentUUID)
+            }
+        });
+
         let watchId = null;
         const readings = [];
         let deviceId = localStorage.getItem("deviceId");
@@ -57,6 +103,10 @@
         }
 
         function startTracking(){
+            if(!authReady || !currentUid){
+                console.log("Waiting Authentication..");
+                return;
+            }
             document.getElementById("status").textContent = "Start button clicked";
             if(watchId === null){
                 watchId = navigator.geolocation.watchPosition(onSuccess, onError, options);
@@ -98,6 +148,10 @@
             URL.revokeObjectURL(url)
         }
     
+        document.getElementById("start").addEventListener("click", startTracking);
+        document.getElementById("stop").addEventListener("click", stopTracking);
+        document.getElementById("download").addEventListener("click", downloadCSV);
+
     </script>
 </body>
 </html>
