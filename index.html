@@ -12,9 +12,8 @@
 
     <button id="downloadBtn">download</button>
 
-    <div id="status">
-        
-    </div>
+    <div id="status"></div>
+    <div id="uploads"></div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 
@@ -49,16 +48,21 @@
         });
         let currentUid = null
         let authReady = false
+        let sessionId = null
+        let seqNum = 0
+        let uploadCount = 0
 
         signInAnonymously(auth).catch((error) => {
             console.log("Authentication Failed: ", error)
+            document.getElementById("status").textContent = `Sign-in failed: ${error.code}`;
+
         });
 
         onAuthStateChanged(auth, (user) => {
             if(user){
-                currentUUID = user.uid;
+                currentUid = user.uid;
                 authReady = true;
-                console.log("Authenticated: ", currentUUID)
+                console.log("Authenticated: ", currentUid)
             }
         });
 
@@ -75,7 +79,11 @@
         };
 
         function onSuccess(position) {
+            const documentId = `${deviceId}_${position.timestamp}`;
+            const reference = doc(db, "gps_fixes", documentId);
             const positionData = {
+                uid: currentUid,
+                sessionId: sessionId,
                 deviceId:   deviceId,
                 timestamp:  position.timestamp,
                 latitude:   position.coords.latitude,
@@ -84,7 +92,19 @@
                 altitude:   position.coords.altitude,
                 speed:      position.coords.speed,
                 heading:    position.coords.heading,
+                seq: seqNum++,
+                receivedAt: serverTimestamp()
             };
+            setDoc(reference, positionData)
+            .then(() => {
+                uploadCount++;
+                console.log("Uploaded to Firebase: ",documentId)
+                document.getElementById("uploads").textContent = `Uploaded: ${uploadCount} / ${readings.length}`;
+            })
+            .catch((error) => {
+                console.log("Failed to upload to Firebase: ", error)
+                document.getElementById("uploads").textContent = `Upload failed: ${error.code}`;
+            });
             readings.push(positionData);
             let status = document.getElementById("status");
             status.textContent = `Latitude: ${positionData.latitude}
@@ -109,6 +129,9 @@
             }
             document.getElementById("status").textContent = "Start button clicked";
             if(watchId === null){
+                seqNum = 0;
+                uploadCount = 0;
+                sessionId = crypto.randomUUID();
                 watchId = navigator.geolocation.watchPosition(onSuccess, onError, options);
             }
         }
@@ -148,9 +171,9 @@
             URL.revokeObjectURL(url)
         }
     
-        document.getElementById("start").addEventListener("click", startTracking);
-        document.getElementById("stop").addEventListener("click", stopTracking);
-        document.getElementById("download").addEventListener("click", downloadCSV);
+        document.getElementById("startBtn").addEventListener("click", startTracking);
+        document.getElementById("stopBtn").addEventListener("click", stopTracking);
+        document.getElementById("downloadBtn").addEventListener("click", downloadCSV);
 
     </script>
 </body>
