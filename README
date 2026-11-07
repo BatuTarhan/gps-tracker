@@ -1,3 +1,10 @@
+## Files
+- `index.html`: GPS collector, runs in the phone's browser (hosted on GitHub Pages)
+- `apps-script/Code.gs`: dublinbikes poller, runs on Google Apps Script every minute
+- `firestore.rules`: Firestore security rules
+- `export.py`: downloads the cloud data to CSV and measures upload delays
+- `analyse.py`: Assignment 2 data-quality analysis
+
 ## Requirements
 Python 3.9+ (tested on 3.14)
 
@@ -7,4 +14,22 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 ## Run
-python analyse.py gps.csv --out figs
+
+### Collector (own data)
+Open https://batutarhan.github.io/gps-tracker/ on the phone, allow location and press start.
+Each reading is uploaded to the `gps_fixes` collection in Firestore as soon as it is taken.
+
+### Poller (open data)
+Paste `apps-script/Code.gs` into a Google Apps Script project, add the script properties
+`FIREBASE_API_KEY`, `FIREBASE_PROJECT_ID`, `POLLER_EMAIL` and `POLLER_PASSWORD`, then run `setup` once.
+It writes to `bikes_snapshots`, `bikes_latest` and `bike_stations` every minute.
+
+### Export and analyse
+Download a service-account key from Firebase (Project settings > Service accounts > Generate new private key),
+save it as `serviceAccount.json` and do not commit it.
+
+python export.py --key serviceAccount.json --out export --hours 24
+
+python analyse.py export/gps_fixes.csv --out figs
+
+`--hours` sets how far back to export. `analyse.py` also still works on a CSV downloaded from the page (`gps.csv`).

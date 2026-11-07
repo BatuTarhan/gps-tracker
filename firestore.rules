@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isPoller() { return signedIn() && request.auth.uid == "LNtcwxWUlYMJ6XWJlHnSgA6qn7D2"; }
+    function optNumber(v) { return v == null || v is number; }
+
+    match /gps_fixes/{fixId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && (resource == null || resource.data.uid == request.auth.uid)
+        && request.resource.data.keys().hasOnly([
+             'uid', 'deviceId', 'sessionId', 'seq', 'timestamp', 'receivedAt',
+             'latitude', 'longitude', 'accuracy', 'altitude', 'speed', 'heading'])
+        && request.resource.data.timestamp is int
+        && request.resource.data.seq is int
+        && request.resource.data.latitude  is number
+        && request.resource.data.latitude  >= -90  && request.resource.data.latitude  <= 90
+        && request.resource.data.longitude is number
+        && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
+        && request.resource.data.accuracy  is number
+        && optNumber(request.resource.data.altitude)
+        && optNumber(request.resource.data.speed)
+        && optNumber(request.resource.data.heading)
+        && request.resource.data.receivedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /gps_sessions/{sessionId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid;
+      allow delete: if false;
+    }
+
+    match /bikes_latest/{docId}    { allow read: if signedIn(); allow write: if isPoller(); }
+    match /bikes_snapshots/{docId} { allow read: if signedIn(); allow write: if isPoller(); }
+    match /bike_stations/{docId}   { allow read: if signedIn(); allow write: if isPoller(); }
+  }
+}
